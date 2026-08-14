@@ -147,17 +147,28 @@
   .section-head h2{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:clamp(2rem,3vw,2.7rem);}
   .section-head p{color:var(--cream-dim);font-size:.92rem;max-width:420px;}
 
-  /* ---------- categories ---------- */
-  .cat-scroller{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;}
-  .cat-pill{
+  /* ---------- categorias em fileira horizontal ---------- */
+  .cat-nav{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;}
+  .cat-nav a{
     flex:0 0 auto;padding:10px 22px;border-radius:30px;border:1px solid var(--card-line);
     background:var(--card);cursor:pointer;font-size:.88rem;color:var(--cream-dim);
-    transition:all .25s;white-space:nowrap;
+    transition:all .25s;white-space:nowrap;text-decoration:none;
   }
-  .cat-pill.active,.cat-pill:hover{border-color:var(--rose);color:var(--rose);background:rgba(217,143,160,.08);}
+  .cat-nav a:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,162,74,.08);}
 
-  /* ---------- product grid ---------- */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:26px;margin-top:36px;}
+  .cat-row{margin-top:52px;}
+  .cat-row-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px;}
+  .cat-row-head h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:1.7rem;color:var(--cream);}
+  .cat-row-head span{color:var(--cream-dim);font-size:.8rem;}
+
+  /* ---------- product grid / horizontal scroll ---------- */
+  .h-scroll{
+    display:flex;gap:22px;overflow-x:auto;padding:6px 4px 18px;scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+  .h-scroll::-webkit-scrollbar{height:6px;}
+  .h-scroll::-webkit-scrollbar-thumb{background:var(--card-line);border-radius:10px;}
+  .h-scroll .card{flex:0 0 250px;scroll-snap-align:start;}
   .card{
     background:var(--card);border:1px solid var(--card-line);border-radius:6px;
     overflow:hidden;transition:transform .3s, border-color .3s;position:relative;
@@ -306,9 +317,9 @@
     nav{display:none;}
     .hero{grid-template-columns:1fr;padding:6vh 5vw;}
     .hero-visual{height:280px;order:-1;}
-    .about{grid-template-columns:1fr;padding:40px 6vw;margin:0 5vw;}
     section{padding:6vh 5vw;}
     footer{padding:40px 5vw;}
+    .h-scroll .card{flex:0 0 210px;}
   }
 </style>
 </head>
@@ -326,9 +337,9 @@
   <div class="logo">Rn<span>_maquiagens</span></div>
   <nav>
     <a href="#catalogo">Catálogo</a>
-    <a href="#catalogo" onclick="filterCat('Cílios & Sobrancelhas')">Cílios & Sobrancelhas</a>
-    <a href="#catalogo" onclick="filterCat('Skincare')">Skincare</a>
-    <a href="#catalogo" onclick="filterCat('Cabelo')">Cabelo</a>
+    <a href="#catalogo" onclick="scrollToCat('Maquiagem')">Maquiagem</a>
+    <a href="#catalogo" onclick="scrollToCat('Cabelo')">Cabelo</a>
+    <a href="#catalogo" onclick="scrollToCat('Skincare')">Skincare</a>
   </nav>
   <div class="header-actions">
     <button class="icon-btn" title="Área administrativa" onclick="openLoginModal()">⚙</button>
@@ -360,11 +371,11 @@
   <div class="section-head">
     <div>
       <h2>Catálogo</h2>
-      <p>Filtre por categoria, adicione ao carrinho e finalize o pedido direto pelo WhatsApp.</p>
+      <p>Deslize para o lado dentro de cada categoria e adicione ao carrinho.</p>
     </div>
   </div>
-  <div class="cat-scroller" id="catScroller"></div>
-  <div class="grid" id="productGrid"></div>
+  <div class="cat-nav" id="catNav"></div>
+  <div id="catalogRows"></div>
 </section>
 
 <footer>
@@ -379,9 +390,9 @@
   </div>
   <div class="f-col">
     <h4>Categorias</h4>
-    <a href="#catalogo" onclick="filterCat('Cílios & Sobrancelhas')">Cílios & Sobrancelhas</a>
-    <a href="#catalogo" onclick="filterCat('Skincare')">Skincare</a>
-    <a href="#catalogo" onclick="filterCat('Cabelo')">Cabelo</a>
+    <a href="#catalogo" onclick="scrollToCat('Maquiagem')">Maquiagem</a>
+    <a href="#catalogo" onclick="scrollToCat('Cabelo')">Cabelo</a>
+    <a href="#catalogo" onclick="scrollToCat('Skincare')">Skincare</a>
   </div>
 </footer>
 
@@ -419,11 +430,9 @@
     <div class="field">
       <label>Categoria</label>
       <select id="pCat">
-        <option value="Cílios & Sobrancelhas">Cílios & Sobrancelhas</option>
-        <option value="Skincare">Skincare</option>
+        <option value="Maquiagem">Maquiagem</option>
         <option value="Cabelo">Cabelo</option>
-        <option value="Batom">Batom</option>
-        <option value="Gloss">Gloss</option>
+        <option value="Skincare">Skincare</option>
       </select>
     </div>
     <div class="field">
@@ -435,8 +444,12 @@
       <input type="text" id="pPrice" placeholder="Ex: 39,90">
     </div>
     <div class="field">
-      <label>Caminho ou link da foto (opcional)</label>
-      <input type="text" id="pImg" placeholder="images/nome-do-produto.jpg">
+      <label>Foto do produto</label>
+      <input type="file" id="pImgFile" accept="image/*" onchange="handleImgUpload(event)">
+      <div id="pImgPreviewWrap" style="margin-top:10px;display:none;">
+        <img id="pImgPreview" style="width:90px;height:90px;object-fit:cover;border-radius:6px;border:1px solid var(--card-line);">
+      </div>
+      <input type="hidden" id="pImg">
     </div>
     <div class="field">
       <label>Emoji / ícone de destaque (usado se não houver foto)</label>
@@ -480,8 +493,8 @@ const ADMIN_PASSWORD = "rnbeleza2026"; // troque esta senha à vontade editando 
 
 /* ---------------- CATALOGO PADRAO (baseado nas fotos do Instagram) ---------------- */
 const DEFAULT_PRODUCTS = [
-  {id:"p1", name:"Máscara de Cílios e Sobrancelhas Mood", cat:"Cílios & Sobrancelhas", desc:"Ruby Rose — com biotina e óleo de rícino, alonga e nutre.", price:"14,00", img:"images/mascara-mood.jpg", badge:"Mais vendido"},
-  {id:"p2", name:"Modelador de Cílios", cat:"Cílios & Sobrancelhas", desc:"Curvatura duradoura antes da máscara, uso diário.", price:"A definir", img:"images/modelador-cilios.jpg", badge:""},
+  {id:"p1", name:"Máscara de Cílios e Sobrancelhas Mood", cat:"Maquiagem", desc:"Ruby Rose — com biotina e óleo de rícino, alonga e nutre.", price:"14,00", img:"images/mascara-mood.jpg", badge:"Mais vendido"},
+  {id:"p2", name:"Modelador de Cílios", cat:"Maquiagem", desc:"Curvatura duradoura antes da máscara, uso diário.", price:"A definir", img:"images/modelador-cilios.jpg", badge:""},
   {id:"p3", name:"Kit Sabonete Líquido Bem Me Quero", cat:"Skincare", desc:"Trio Bella: ácido hialurônico, rosa mosqueta e vitamina C — 100ml cada.", price:"A definir", img:"images/sabonetes-bem-me-quero.jpg", badge:"Kit"},
   {id:"p4", name:"Body Cream Angels", cat:"Skincare", desc:"Cap Life — hidratante corporal intenso, 125ml.", price:"12,00", img:"images/cap-life-angels.jpg", badge:""},
   {id:"p5", name:"Mousse Facial Angels", cat:"Skincare", desc:"Cap Life — purifica, hidrata e acalma, antipoluição, 150ml.", price:"15,00", img:"images/cap-life-angels.jpg", badge:""},
@@ -490,8 +503,9 @@ const DEFAULT_PRODUCTS = [
   {id:"p8", name:"Hidratante Facial CalmSkin", cat:"Skincare", desc:"Dapop — 72h de hidratação, com niacinamida e alfa bisabolol, 28g.", price:"12,00", img:"images/calmskin-dapop.jpg", badge:"Novidade"},
 ];
 
+const CAT_ORDER = ["Maquiagem", "Cabelo", "Skincare"];
+
 let products = [];
-let activeCat = "Todos";
 let cart = []; // [{id, qty}]
 
 /* ---------------- STORAGE (localStorage — funciona quando o site estiver publicado) ---------------- */
@@ -547,29 +561,49 @@ function wireWhatsLinks(){
 }
 
 /* ---------------- RENDER ---------------- */
+function slug(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-'); }
+
 function renderCategories(){
-  const cats = ["Todos", ...new Set(products.map(p=>p.cat))];
-  const wrap = document.getElementById('catScroller');
-  wrap.innerHTML = cats.map(c=>`<button class="cat-pill ${c===activeCat?'active':''}" onclick="filterCat('${c}')">${c==='Skincare'?'Cuidados com a pele':c}</button>`).join('');
+  const present = [...new Set(products.map(p=>p.cat))];
+  const ordered = [...CAT_ORDER.filter(c=>present.includes(c)), ...present.filter(c=>!CAT_ORDER.includes(c))];
+  const wrap = document.getElementById('catNav');
+  wrap.innerHTML = ordered.map(c=>`<a href="#cat-${slug(c)}" onclick="scrollToCat('${c}')">${c}</a>`).join('');
 }
 
-function filterCat(c){
-  activeCat = c;
-  renderCategories();
-  renderProducts();
+function scrollToCat(c){
+  const el = document.getElementById('cat-'+slug(c));
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function renderProducts(){
-  const grid = document.getElementById('productGrid');
-  const list = activeCat==="Todos" ? products : products.filter(p=>p.cat===activeCat);
+  const wrap = document.getElementById('catalogRows');
   document.getElementById('statProdutos').textContent = products.length;
 
-  if(list.length===0){
-    grid.innerHTML = `<p style="color:var(--cream-dim);grid-column:1/-1;">Nenhum produto nesta categoria ainda.</p>`;
+  if(products.length===0){
+    wrap.innerHTML = `<p style="color:var(--cream-dim);">Nenhum produto cadastrado ainda.</p>`;
     return;
   }
 
-  grid.innerHTML = list.map(p=>`
+  const present = [...new Set(products.map(p=>p.cat))];
+  const ordered = [...CAT_ORDER.filter(c=>present.includes(c)), ...present.filter(c=>!CAT_ORDER.includes(c))];
+
+  wrap.innerHTML = ordered.map(cat=>{
+    const items = products.filter(p=>p.cat===cat);
+    return `
+      <div class="cat-row" id="cat-${slug(cat)}">
+        <div class="cat-row-head">
+          <h3>${cat}</h3>
+          <span>${items.length} produto${items.length>1?'s':''}</span>
+        </div>
+        <div class="h-scroll">
+          ${items.map(p=>productCard(p)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function productCard(p){
+  return `
     <div class="card" id="card-${p.id}">
       <div class="card-visual" style="background:linear-gradient(160deg, rgba(217,143,160,.14), rgba(201,162,74,.08));">
         ${p.badge?`<span class="card-badge">${p.badge}</span>`:''}
@@ -588,8 +622,7 @@ function renderProducts(){
           <button class="mini-btn danger" onclick="deleteProduct('${p.id}')">Excluir</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
 }
 
 /* ---------------- ADMIN AUTH ---------------- */
@@ -619,15 +652,42 @@ function closeModal(id){
   document.getElementById(id).classList.remove('show');
 }
 
+/* ---------------- UPLOAD DE FOTO (direto da galeria) ---------------- */
+function handleImgUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      const maxW = 700;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      document.getElementById('pImg').value = dataUrl;
+      document.getElementById('pImgPreview').src = dataUrl;
+      document.getElementById('pImgPreviewWrap').style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 /* ---------------- ADMIN CRUD ---------------- */
 function openProductModal(){
   document.getElementById('productModalTitle').textContent = 'Novo produto';
   document.getElementById('pId').value = '';
   document.getElementById('pName').value = '';
-  document.getElementById('pCat').value = 'Batom';
+  document.getElementById('pCat').value = 'Maquiagem';
   document.getElementById('pDesc').value = '';
   document.getElementById('pPrice').value = '';
   document.getElementById('pImg').value = '';
+  document.getElementById('pImgFile').value = '';
+  document.getElementById('pImgPreviewWrap').style.display = 'none';
   document.getElementById('pIcon').value = '';
   document.getElementById('pBadge').value = '';
   document.getElementById('productOverlay').classList.add('show');
@@ -642,6 +702,13 @@ function editProduct(id){
   document.getElementById('pDesc').value = p.desc;
   document.getElementById('pPrice').value = p.price;
   document.getElementById('pImg').value = p.img || '';
+  document.getElementById('pImgFile').value = '';
+  if(p.img){
+    document.getElementById('pImgPreview').src = p.img;
+    document.getElementById('pImgPreviewWrap').style.display = 'block';
+  }else{
+    document.getElementById('pImgPreviewWrap').style.display = 'none';
+  }
   document.getElementById('pIcon').value = p.icon || '';
   document.getElementById('pBadge').value = p.badge;
   document.getElementById('productOverlay').classList.add('show');
